@@ -1,0 +1,111 @@
+<html>
+   <!-- src="embedding.3.0.js" -->
+  <script type="module" src="https://10ax.online.tableau.com/javascripts/api/tableau.embedding.3.latest.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js" integrity="sha512-E8QSvWZ0eCLGk4km3hxSsNmGWbLtSCSUcewDQPQWZF6pEU8GlT8a5fF32wOl1i8ftdMhssTrF/OhyGWwonTcXA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+  <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+<script>
+  var jwt;
+  document.addEventListener("DOMContentLoaded", function() {
+    document.getElementById("showme").addEventListener("click", go);
+  });
+  function go(){
+    var userid=document.getElementById('userid').value
+    var iss=document.getElementById('iss').value
+    var kid=document.getElementById('kid').value
+    var secret=document.getElementById('secret').value
+    var wurl=document.getElementById('wurl').value
+    var scope=document.getElementById('scope').selectedOptions
+    var scopes = Array.from(scope).map(({ value }) => value);
+    var token= createToken(userid,kid,secret,iss,scopes);
+    document.getElementById("jwt").value=token;
+    let tp=`
+    <tableau-viz id="tableauViz" src="${wurl}" 
+      token="${token}"
+      height="100%"
+      width="100%"
+      toolbar="Bottom" hide-tabs>
+    </tableau-viz>`
+    document.getElementById('dash').innerHTML =tp;
+  }
+
+</script>
+<body style="padding-left:100px;padding-right:100px;padding-top:20px">
+  <div class="form-group row">
+    <label class="col-sm-2 col-form-label" for="userid">User you want to authenticate on Tableau:</label>
+    <div class="col-sm-10"><input class="form-control" type="text" id="userid" name="userid" value="aalteirac@tableau.com"></div>
+  </div>
+  <div class="form-group row">
+    <label class="col-sm-2 col-form-label" for="iss">The Connected App ID:</label>
+    <div class="col-sm-10"><input class="form-control" type="text" id="iss" name="iss" value="9405b41c-2d22-4d30-8097-a359ac27eca3"></div>
+  </div>
+  <div class="form-group row">
+    <label class="col-sm-2 col-form-label" for="kid">The Connected App Secret ID:</label>
+    <div class="col-sm-10"><input class="form-control" type="text" id="kid" name="kid" value="e83b610c-4834-4b9a-97b9-2bf23e6d81f9"></div>
+  </div>
+  <div class="form-group row">
+    <label class="col-sm-2 col-form-label" for="secret">The Connected App Secret value:</label>
+    <div class="col-sm-10"><input class="form-control" type="text" id="secret" name="secret" value="czncA7GATFi1zDWhJ/z+Vi6xrqLqUBTZMbPcfZJtGGY="></div>
+  </div>
+  <div class="form-group row">
+    <label class="col-sm-2 col-form-label" for="wurl">The Dash URL (has to be on Beta TOL site, with /t notation):</label>
+    <div class="col-sm-10"><input class="form-control" type="text" id="wurl" name="wurl" value="https://10ax.online.tableau.com/t/alteiracdevdev438399/views/Superstore/Overview"></div>
+  </div>
+  <div class="form-group row">
+    <label class="col-sm-2 col-form-label" for="scope">Scope, Use CTRL to multi-select <br> NOT YET SUPPORTED !!!</label>
+
+    <div class="col-sm-10"><select multiple class="form-control" id="scope">
+      <option selected>tableau:views:embed</option>
+    </select>
+    </div>
+  </div>
+  <div class="form-group row">
+    <div class="col-sm-2 col-form-label"><input id="showme" type="submit" value="Show Me the Dash !"></div>
+    <div class="col-sm-8"><input class="form-control" id="jwt" type="text" readonly="readonly" placeholder="Generated JWT will appear here..."></div>
+    <div class="col-sm-2"><input class="form-control button" id="dec" type="submit" value="Decode on JWT.io..." onclick="window.open('https://jwt.io/#debugger-io?token='+jwt, '_blank').focus();"></div>
+  </div>
+</div>
+  <div id="dash" style="height:100%;width:100%" >
+
+  </div>
+</body>
+
+<script>
+  function createToken(userid,kid,secret,iss,scp){
+    var header = {
+      "alg": "HS256",
+      "typ": "JWT",
+      "iss": iss,
+      "kid": kid,
+    };
+    var stringifiedHeader = CryptoJS.enc.Utf8.parse(JSON.stringify(header));
+    var encodedHeader = base64url(stringifiedHeader);
+    var claimSet = {
+      "sub": userid,
+      "aud":"tableau",
+      "nbf":Math.round(new Date().getTime()/1000)-100,
+      "jti":new Date().getTime().toString(),
+      "iss": iss,
+      "scp": scp,
+      "exp": Math.round(new Date().getTime()/1000)+100
+    };
+    var stringifiedData = CryptoJS.enc.Utf8.parse(JSON.stringify(claimSet));
+    var encodedData = base64url(stringifiedData);
+    var token = encodedHeader + "." + encodedData;
+    var signature = CryptoJS.HmacSHA256(token, secret);
+    signature = base64url(signature);
+    var signedToken = token + "." + signature;
+    return signedToken;
+  }
+  
+  function base64url(source) {
+    encodedSource = CryptoJS.enc.Base64.stringify(source);
+    encodedSource = encodedSource.replace(/=+$/, '');
+    encodedSource = encodedSource.replace(/\+/g, '-');
+    encodedSource = encodedSource.replace(/\//g, '_');
+    return encodedSource;
+  }
+</script>
+</html>
